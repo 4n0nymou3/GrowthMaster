@@ -137,9 +137,9 @@ button
 			<label for="interestRate">نرخ سود سالانه (درصد):</label>
 			<input type="text" id="interestRate" class="number-input" required>
 			<label for="compoundFrequency">دفعات ترکیب سود در سال:</label>
-			<input type="text" id="compoundFrequency" class="number-input" required>
+			<input type="text" id="compoundFrequency" class="number-input" value="12" required>
 			<label for="monthlyAddition">افزایش ماهانه (تومان):</label>
-			<input type="text" id="monthlyAddition" class="number-input" required>
+			<input type="text" id="monthlyAddition" class="number-input" value="0" required>
 			<div class="button-group">
 				<button type="button" id="clearBtn">پاک کردن</button>
 				<button type="submit" id="calculateBtn">محاسبه</button>
@@ -174,14 +174,17 @@ function applyNumberFormatting(input)
 document.querySelectorAll('.number-input')
 	.forEach(applyNumberFormatting);
 
-function calculateTimeWithAdditions(P, A, r, n, dailyAddition)
+function calculateTimeToReachTarget(P, A, r, n, monthlyAddition)
 {
+	if (P >= A) return 0;
+	const ratePerPeriod = r / n;
+	const additionPerPeriod = monthlyAddition * 12 / n;
 	let t = 0;
 	let currentAmount = P;
-	while (currentAmount < A)
+	while (currentAmount < A && t < 100)
 	{
-		currentAmount += dailyAddition;
-		currentAmount *= (1 + r / n);
+		currentAmount += additionPerPeriod;
+		currentAmount *= (1 + ratePerPeriod);
 		t += 1 / n;
 	}
 	return t;
@@ -190,36 +193,56 @@ document.getElementById('compoundInterestForm')
 	.addEventListener('submit', function(e)
 	{
 		e.preventDefault();
-		const P = unformatNumber(document.getElementById('initialInvestment')
+		const initialInvestment = unformatNumber(document.getElementById('initialInvestment')
 			.value);
-		const A = unformatNumber(document.getElementById('targetAmount')
+		const targetAmount = unformatNumber(document.getElementById('targetAmount')
 			.value);
-		const r = unformatNumber(document.getElementById('interestRate')
+		const annualRate = unformatNumber(document.getElementById('interestRate')
 			.value) / 100;
-		const n = unformatNumber(document.getElementById('compoundFrequency')
+		const compoundFrequency = unformatNumber(document.getElementById('compoundFrequency')
 			.value);
 		const monthlyAddition = unformatNumber(document.getElementById('monthlyAddition')
 			.value);
-		const dailyAddition = monthlyAddition * 12 / n;
-		const tWithAdditions = calculateTimeWithAdditions(P, A, r, n, dailyAddition);
-		const years = Math.floor(tWithAdditions);
-		const remainingYearFraction = tWithAdditions - years;
-		const months = Math.floor(remainingYearFraction * 12);
-		const days = Math.floor((remainingYearFraction * 12 - months) * 30);
+		if (initialInvestment <= 0 || targetAmount <= 0 || annualRate <= 0 || compoundFrequency <= 0)
+		{
+			document.getElementById('result')
+				.innerHTML = 'لطفاً مقادیر معتبر وارد کنید.';
+			return;
+		}
+		const totalYears = calculateTimeToReachTarget(initialInvestment, targetAmount, annualRate, compoundFrequency, monthlyAddition);
+		if (totalYears >= 100)
+		{
+			document.getElementById('result')
+				.innerHTML = 'با شرایط فعلی، رسیدن به مبلغ هدف بیش از 100 سال طول می‌کشد.';
+			return;
+		}
+		const years = Math.floor(totalYears);
+		const monthsDecimal = (totalYears - years) * 12;
+		const months = Math.floor(monthsDecimal);
+		const days = Math.floor((monthsDecimal - months) * 30);
 		document.getElementById('result')
 			.innerHTML = `زمان لازم: ${years} سال، ${months} ماه و ${days} روز`;
 	});
 document.getElementById('clearBtn')
 	.addEventListener('click', function()
 	{
-		document.querySelectorAll('.number-input')
-			.forEach(input =>
-			{
-				input.value = '';
-			});
+		document.getElementById('initialInvestment')
+			.value = '';
+		document.getElementById('targetAmount')
+			.value = '';
+		document.getElementById('interestRate')
+			.value = '';
+		document.getElementById('compoundFrequency')
+			.value = '12';
+		document.getElementById('monthlyAddition')
+			.value = '0';
 		document.getElementById('result')
 			.innerHTML = '';
 	});
+document.getElementById('compoundFrequency')
+	.value = '12';
+document.getElementById('monthlyAddition')
+	.value = '0';
 	</script>
 </body>
 
